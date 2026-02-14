@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wheel of Love 💖</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  height:100vh;
+  background:radial-gradient(circle,#fff0f6,#ff8fab,#ff1f6d);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  font-family:system-ui;
+  overflow:hidden;
+}
+
+/* TEXT */
+h1,h2{color:#fff;text-align:center}
+
+/* WHEEL */
+#wheel-wrapper{
+  position:relative;
+  width:340px;
+  height:340px;
+}
+
+#pointer{
+  position:absolute;
+  top:-30px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:42px;
+  z-index:5;
+}
+
+svg{width:100%;height:100%;}
+
+text{
+  font-size:12px;
+  font-weight:700;
+  fill:#80002f;
+  text-anchor:middle;
+  dominant-baseline:middle;
+}
+
+/* BUTTON */
+button{
+  margin-top:16px;
+  padding:14px 36px;
+  font-size:22px;
+  border:none;
+  border-radius:50px;
+  background:#ff1f6d;
+  color:white;
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.6;
+}
+
+/* RESULT */
+#result{color:#fff;font-size:26px;margin-top:10px}
+#attempts{color:#fff;font-size:20px;margin-top:4px}
+
+/* FALLING HEARTS */
+.falling-heart{
+  position:fixed;
+  top:-40px;
+  pointer-events:none;
+  animation:fall linear forwards;
+}
+
+@keyframes fall{
+  from{transform:translateY(0) rotate(0);opacity:1}
+  to{transform:translateY(120vh) rotate(360deg);opacity:0}
+}
+</style>
+</head>
+
+<body>
+
+<h1>💖 Wheel of Love 💖</h1>
+<h2>Spin me ✨</h2>
+
+<div id="wheel-wrapper">
+  <div id="pointer">🏹</div>
+  <svg id="wheel" viewBox="0 0 300 300">
+    <g id="slices" transform="translate(150,150)"></g>
+  </svg>
+</div>
+
+<button id="spinBtn">💘 Spin</button>
+<div id="result"></div>
+<div id="attempts">Attempts left: 3</div>
+
+<audio id="kiss" playsinline preload="auto">
+  <source src="https://assets.mixkit.co/sfx/preview/mixkit-romantic-kiss-1003.mp3">
+</audio>
+
+<script>
+/* ---------- DATA ---------- */
+const labels=[
+  "Try Again 😜",
+  "Unlimted Kisses 💋",
+  "Paris Trip 🤍",
+  "Shopping 🍫",
+  "Movie Date 🎬",
+  "Infinite Cuddles 🫶",
+  "Full Hugs 💌"
+];
+const colors=["#ffd6e0","#ffe5ec","#ffccd5","#ffb3c6","#ff8fab","#ffb3c6","#ffccd5"];
+const sliceAngle=360/labels.length;
+
+/* ---------- BUILD WHEEL ---------- */
+const g=document.getElementById("slices");
+labels.forEach((label,i)=>{
+  const start=i*sliceAngle,end=start+sliceAngle,mid=start+sliceAngle/2;
+  const r=150,tr=90;
+
+  const x1=Math.cos(start*Math.PI/180)*r;
+  const y1=Math.sin(start*Math.PI/180)*r;
+  const x2=Math.cos(end*Math.PI/180)*r;
+  const y2=Math.sin(end*Math.PI/180)*r;
+
+  const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("d",`M0 0 L${x1} ${y1} A${r} ${r} 0 0 1 ${x2} ${y2} Z`);
+  p.setAttribute("fill",colors[i]);
+  g.appendChild(p);
+
+  const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+  const tx=Math.cos(mid*Math.PI/180)*tr;
+  const ty=Math.sin(mid*Math.PI/180)*tr;
+  t.setAttribute("x",tx);
+  t.setAttribute("y",ty);
+  t.setAttribute("transform",`rotate(${mid},${tx},${ty})`);
+  t.textContent=label;
+  g.appendChild(t);
+});
+
+/* ---------- FALLING HEARTS ---------- */
+function dropHearts(count=22){
+  for(let i=0;i<count;i++){
+    const h=document.createElement("div");
+    h.className="falling-heart";
+    h.textContent=Math.random()>0.3?"💖":"💗";
+    h.style.fontSize=18+Math.random()*28+"px";
+    h.style.left=Math.random()*100+"vw";
+    h.style.animationDuration=2+Math.random()*1.5+"s";
+    document.body.appendChild(h);
+    setTimeout(()=>h.remove(),4000);
+  }
+}
+
+/* ---------- SPIN LOGIC ---------- */
+let currentAngle=0;
+let spinning=false;
+let spinCount=0;
+
+const wheel=document.getElementById("wheel");
+const spinBtn=document.getElementById("spinBtn");
+const result=document.getElementById("result");
+const attempts=document.getElementById("attempts");
+const kiss=document.getElementById("kiss");
+
+const tryIndex=labels.indexOf("Try Again 😜");
+const tryCenter=tryIndex*sliceAngle+sliceAngle/2;
+
+spinBtn.onclick=()=>{
+  if(spinning||spinCount>=3) return;
+
+  dropHearts();
+  spinCount++;
+  attempts.textContent=`Attempts left: ${3-spinCount}`;
+  spinning=true;
+  result.textContent="";
+
+  kiss.currentTime=0;
+  kiss.play();
+
+  const targetSliceAngle=spinCount<=2 ? tryCenter : Math.random()*360;
+
+  const finalAngle=
+    currentAngle+
+    5*360+
+    (270-targetSliceAngle-(currentAngle%360));
+
+  gsap.to(wheel,{
+    rotation:finalAngle,
+    duration:3.2,
+    ease:"power4.out",
+    onUpdate(){
+      currentAngle=gsap.getProperty(wheel,"rotation");
+    },
+    onComplete(){
+      spinning=false;
+      finish();
+    }
+  });
+};
+
+/* ---------- FINISH ---------- */
+function finish(){
+  if(spinCount<=2){
+    result.textContent="😜 Try Again!";
+    kiss.play();
+  }else{
+    spinBtn.disabled=true;
+
+    gsap.to(document.body,{
+      opacity:0,
+      scale:0.98,
+      duration:0.25,
+      ease:"power1.out",
+      onComplete(){
+        window.location.href="valentine.html";
+      }
+    });
+  }
+}
+</script>
+
+</body>
+</html>
